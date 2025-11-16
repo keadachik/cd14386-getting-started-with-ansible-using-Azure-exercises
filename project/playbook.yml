@@ -1,0 +1,46 @@
+- name: Configure Azure web servers
+  hosts: azure
+  become: true
+  
+  pre_tasks:
+    - name: Ensure firewalld is installed (safe if already present)
+      ansible.builtin.package:
+        name: firewalld
+        state: present
+
+    - name: Ensure firewalld is running and enabled
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Open ports via firewalld using list variable
+      ansible.posix.firewalld:
+        port: "{{ item }}/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop: "{{ ports }}"
+
+    - name: Check existence of /var/www/html/www.companyplus.com
+      ansible.builtin.stat:
+        path: /var/www/html/www.companyplus.com
+      register: companyplus_dir
+
+    - name: Report directory status
+      block:
+        - name: Directory exists message
+          ansible.builtin.debug:
+            msg: "/var/www/html/www.companyplus.com exists."
+          when: companyplus_dir.stat.exists
+        - name: Directory missing error
+          ansible.builtin.debug:
+            msg: "ERROR: /var/www/html/www.companyplus.com does not exist."
+          when: not companyplus_dir.stat.exists
+
+  roles: 
+    - role: webserver
+      vars:
+        app_root: html_demo_site-main
+        server_name: "{{ ansible_default_ipv4.address }}"
+        document_root: /var/www/html
