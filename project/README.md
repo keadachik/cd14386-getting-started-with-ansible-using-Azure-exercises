@@ -1,74 +1,74 @@
-## 実行手順
+## How to Run
 
-事前準備:
+Prerequisites:
 
 ```bash
 ansible-galaxy collection install ansible.posix
-# YAML出力を使いたい場合（任意）
+# If you prefer YAML stdout formatting (optional):
 # ansible-galaxy collection install community.general
 ```
 
-接続確認:
+Connectivity check:
 
 ```bash
 cd project
 ansible -i inventory.ini azure -m ping
 ```
 
-Playbook 実行:
+Run the playbook:
 
 ```bash
 ansible-playbook -i inventory.ini playbook.yml
 ```
 
 
-## 実行結果の証跡（任意・推奨）
+## Evidence (Recommended)
 
-- Playbook 実行ログ要約（例）: `failed=0` が表示されていること
-- 2回目実行時に以下のメッセージが表示されること
+- Include a short log excerpt showing `failed=0` for all 3 hosts.
+- On the second run, the directory check should print:
   - `/var/www/html/www.companyplus.com exists.`
 
 
-## バージョン情報（任意）
+## Version Notes (Optional)
 
 ```bash
 ansible --version
 ```
 
-- 注意: 一部の環境で `ansible.posix` コレクションが Ansible 2.14 系に対して警告を出すことがあります。多くの場合は警告のみで実行は可能です。
+- Note: Some environments may show a warning about `ansible.posix` not officially supporting Ansible 2.14.x. In most cases it still works; the warning can be ignored or resolved by upgrading ansible-core.
 
 
-## 追加の加点要素（任意）
+## Optional Enhancements
 
-- `document_root/app_root`（デフォルト: `/var/www/html/html_demo_site-main`）に `index.html` を配置して HTTP 疎通確認
+- Place an `index.html` under `document_root/app_root` (default: `/var/www/html/html_demo_site-main`) and verify HTTP access:
 
 ```bash
-# 例: いずれかのターゲット上で
+# On one of the target hosts
 echo "hello" | sudo tee /var/www/html/html_demo_site-main/index.html
 
-# ローカルから疎通確認
-curl http://<VMのIP>/
+# From your machine
+curl http://<VM_IP>/
 ```
 
-- 使った追加モジュール・条件分岐・フィルタなどの説明を追記（任意）
+- Add brief notes about any extra modules, conditionals, or filters you used.
 
 
-## 構成の要点
+## Structure Overview
 
-- `inventory.ini`: `azure` グループに 3 ホストを定義
-- `group_vars/azure/vars.yml`: `ports: [80, 443]` を定義（firewalld に適用）
+- `inventory.ini`: defines the `azure` group with 3 hosts.
+- `group_vars/azure/vars.yml`: defines `ports: [80, 443]` (applied to firewalld).
 - `playbook.yml`:
-  - firewalld の導入・起動
-  - `ansible.posix.firewalld` を用いて `ports` でループ開放（permanent/immediate）
-  - `/var/www/html/www.companyplus.com` の存在チェックと条件メッセージ表示
-  - `webserver` ロールを以下の変数で呼び出し
+  - installs/enables firewalld
+  - opens ports via `ansible.posix.firewalld` looping over `ports` (permanent + immediate)
+  - checks for `/var/www/html/www.companyplus.com` and prints a conditional message
+  - calls the `webserver` role with:
     - `app_root: html_demo_site-main`
     - `server_name: "{{ ansible_default_ipv4.address }}"`
     - `document_root: /var/www/html`
 - `roles/webserver`:
   - `vars/main.yml`: `webserver: nginx`
-  - `tasks/main.yml`: nginx インストール、2ディレクトリ作成（owner/group=nginx, mode=0770）、テンプレート配置
-  - `handlers/main.yml`: テンプレート更新後に nginx 再起動
-  - `templates/nginx.conf.j2`: `app_root`, `server_name`, `document_root` を使用
+  - `tasks/main.yml`: installs nginx, creates 2 content directories (owner/group=nginx, mode=0770), deploys template
+  - `handlers/main.yml`: restarts nginx after the template is updated
+  - `templates/nginx.conf.j2`: uses `app_root`, `server_name`, `document_root`
 
 
